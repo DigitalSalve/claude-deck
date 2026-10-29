@@ -1,0 +1,50 @@
+# Build the universal ClaudeDeck zip and publish it as a GitHub release on a v* tag.
+# Runs on the GitHub-hosted macos-14 runner; change runs-on to use your own macOS runner.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag matches Info.plist version
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Info.plist)
+          if [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Info.plist version ${VERSION}"
+            exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: swift run ClaudeDeckTests
+
+      - name: Package
+        run: ./package-release.sh
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ZIP="dist/ClaudeDeck-${VERSION}-macos-universal.zip"
+          SHA=$(cut -d' ' -f1 "${ZIP}.sha256")
+          gh release create "${GITHUB_REF_NAME}" "${ZIP}" "${ZIP}.sha256" \
+            --title "ClaudeDeck ${VERSION}" \
+            --notes "Prebuilt ClaudeDeck menu-bar app + \`claudedeck\` CLI, universal (Apple Silicon + Intel), macOS 14+.
+
+          Install: unzip, then run \`./ClaudeDeck-${VERSION}/install.sh\` (installs /Applications/ClaudeDeck.app and ~/.claude/bin/claudedeck, clears quarantine). Ad-hoc signed, not notarized.
+
+          Built from ${GITHUB_SHA::7}. SHA-256: ${SHA}"
