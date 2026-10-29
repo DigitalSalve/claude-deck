@@ -25,7 +25,7 @@ cd ~/Downloads && unzip ClaudeDeck-*-macos-universal.zip
 
 This installs `/Applications/ClaudeDeck.app`, the CLI at `~/.claude/bin/claudedeck`, the Claude Code skill at `~/.claude/skills/claudedeck`, and the two helper scripts in `~/.claude/scripts`. The build is ad-hoc signed, not notarized; `install.sh` clears the download quarantine flag so Gatekeeper does not block it.
 
-**From source** (Swift 5.9 toolchain):
+**From source** (Swift 6 toolchain, Xcode 16 or later):
 
 ```bash
 git clone <this repo> claude-deck && cd claude-deck
