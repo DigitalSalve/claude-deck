@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: ds-mac-mini-m4  # owner 2026-10-29: no GitHub-hosted macOS minutes; all macOS work on the mac mini
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
