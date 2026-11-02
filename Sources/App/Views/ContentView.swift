@@ -6,6 +6,13 @@ struct ContentView: View {
     @State private var selectedTab: SessionTab = .active
     @State private var dispatchRunning: Bool = false
     @State private var commands = CommandsModel()
+    /// Known launch folders: scan roots, chosen folders, recent launches.
+    /// Persisted at ~/.claude/claudedeck-repos.json.
+    @State private var catalog = RepoCatalog.load()
+    /// Which launch button's "where?" popover is open, if any.
+    @State private var askingFor: LaunchSlot?
+
+    enum LaunchSlot: Hashable { case new, dangerous, resume, continueRecent }
     // Owned by ClaudeDeckApp and injected so the detached Quota window
     // shares the same watchers and parsed state — single source of truth.
     @Bindable var quotaStore: QuotaLiveStore
@@ -16,18 +23,10 @@ struct ContentView: View {
         VStack(spacing: 0) {
             // Launch buttons
             HStack(spacing: 14) {
-                LaunchButton(icon: "terminal", label: "New", color: .blue) {
-                    TerminalLauncher.launch(.new())
-                }
-                LaunchButton(icon: "bolt.shield", label: "Dangerous", color: .red) {
-                    TerminalLauncher.launch(.new(dangerouslySkipPermissions: true))
-                }
-                LaunchButton(icon: "arrow.counterclockwise", label: "Resume", color: .purple) {
-                    TerminalLauncher.launch(.resume())
-                }
-                LaunchButton(icon: "play", label: "Continue", color: .green) {
-                    TerminalLauncher.launch(.continueRecent)
-                }
+                launchButton(.new, label: "New", intent: .new)
+                launchButton(.dangerous, label: "Dangerous", intent: .dangerous)
+                launchButton(.resume, label: "Resume", intent: .resume)
+                launchButton(.continueRecent, label: "Continue", intent: .continueRecent)
                 DispatchButton(isRunning: dispatchRunning) {
                     DispatchLauncher.launch()
                 }
@@ -100,7 +99,12 @@ struct ContentView: View {
                         CommandsList(entries: commands.entries, sessions: manager.activeSessions)
                     } else {
                         RecentSessionsList(sessions: manager.recentSessions) { session in
-                            TerminalLauncher.launch(.resume(sessionId: session.id))
+                            // Claude Code only finds a session from inside its project, so
+                            // match the transcript folder's key back to a known folder.
+                            let cwd = catalog.resolveDirectory(
+                                projectKey: session.projectPath,
+                                extra: manager.activeSessions.map(\.cwd))
+                            TerminalLauncher.launch(.resume(sessionId: session.id), cwd: cwd)
                         }
                     }
                 }
@@ -135,6 +139,37 @@ struct ContentView: View {
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
             commands.reload(sessions: manager.activeSessions)
         }
+    }
+
+    /// A launch button that asks where to run before launching. The picker
+    /// pops over the button itself so the question stays next to the action.
+    private func launchButton(_ slot: LaunchSlot, label: String, intent: LaunchIntent) -> some View {
+        LaunchButton(icon: intent.icon, label: label, color: intent.color) {
+            askingFor = askingFor == slot ? nil : slot
+        }
+        .popover(isPresented: Binding(get: { askingFor == slot },
+                                      set: { if !$0 { askingFor = nil } }),
+                 arrowEdge: .bottom) {
+            LaunchFolderPicker(
+                intent: intent,
+                catalog: $catalog,
+                recentProjectKeys: manager.recentSessions.map(\.projectPath),
+                onLaunch: { dir in
+                    askingFor = nil
+                    startSession(intent.mode, in: dir)
+                },
+                onCancel: { askingFor = nil }
+            )
+        }
+    }
+
+    /// Launch in `dir` and remember it as recent (home is not worth remembering).
+    private func startSession(_ mode: LaunchMode, in dir: String) {
+        if dir != NSHomeDirectory() {
+            catalog.noteLaunch(in: dir)
+            catalog.save()
+        }
+        TerminalLauncher.launch(mode, cwd: dir)
     }
 }
 

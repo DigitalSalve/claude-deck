@@ -4,6 +4,7 @@ A macOS menu-bar app and CLI for people who run several [Claude Code](https://cl
 
 ## What it does
 
+- **Launch buttons.** New, Dangerous, Resume and Continue each ask where to run, in a popover over the button: recent folders with when you last launched there, folders you picked by hand, and every git repository under your scan roots (`~/GitHub` by default). Type to filter, arrow keys to move, Return to launch, Escape to cancel.
 - **Active sessions.** Every live Claude Code session with busy / idle / shell status, source (terminal, desktop, SDK), model, generated title, and first and latest prompt on hover. Kill, resume in a terminal, archive.
 - **Usage windows.** The 5-hour and 7-day bars show Claude Code's own rate-limit percentages and reset times, tagged `live`. Until a session has reported them, an output-token estimate against your plan is shown, tagged `estimated`.
 - **Quota.** Per-session context waste (input per turn now against the start of the session), subagent roll-ups, what rotating a session would save, thinking-token share, web tool calls and cost, for any period or date range.
@@ -73,6 +74,8 @@ This is attributable and audited, not a privilege boundary: anything running as 
 
 **Typing compact and clear.** `scripts/self-console.sh` types the command into the target session's own terminal. It waits until the session's registry status reads idle before each line, and after `/compact` it waits for the compaction to finish before typing the wake note, so a session can schedule its own compact as the last thing it does in a turn. Text and Return are sent separately so a long wake note is submitted rather than read as a paste. It cannot see the input box: text you are typing in that tab when a line lands is sent with it.
 
+**Launch buttons.** The four buttons at the top open a Claude Code session in a new iTerm2 tab after asking which folder to run in. The picker lists recent folders (with the time of the last launch there), folders chosen through Other Folder…, and every git repository one level under each scan root; the … menu adds or removes roots. Search ranks name prefixes first, then substrings, then in-order characters (`cpb` finds `cheqpass-backend`). Home is one click in the footer. Resuming from the Recent tab matches the session's transcript folder back to a known folder and resumes inside it, since Claude Code only finds a session from its own project. Roots, chosen folders and recent launches live in `~/.claude/claudedeck-repos.json`.
+
 **Starting sessions.** `scripts/launch-session.sh` opens a session in a new iTerm2 or Terminal tab without taking focus from the tab you are in, or detached in GNU screen / tmux when the screen is locked.
 
 **Token ledger.** Claude Code deletes transcripts after `cleanupPeriodDays` (30 by default). ClaudeDeck books per-day, per-model totals (input, cache read and write, output, thinking, turns, sessions, estimated cost) into `~/.claude/claudedeck-ledger.json` as it parses transcripts, so history survives. Cost is API list price for the tokens used: an upper bound on a subscription, not what you pay.
@@ -103,7 +106,7 @@ then add it to the `SessionStart` hooks in `~/.claude/settings.json`:
 
 The launcher hook passes the lane name to the session as `BRIDGE_AGENT`; at start, and after `/compact` or `/clear`, the announce hook tells the session to call `bridge_announce` with that name first and to pass the returned `agent_id` on later bridge calls. If your bridge reads a different variable or tool name, edit the two scripts.
 
-**Files it writes.** All under `~/.claude`: `claudedeck.sock`, `claudedeck-commands.log`, `claudedeck-ledger.json`, `claudedeck-usage.json`, `claudedeck-models.json` (your overrides), `claudedeck-models-learned.json`, `claude-deck-cache.json`, `claudedeck-token-cache.json`, `claudedeck-session-numbers.json`, the `settings.json.bak-claudedeck-*` backup, and `claudedeck-debug.log` only with `CLAUDEDECK_DEBUG=1`.
+**Files it writes.** All under `~/.claude`: `claudedeck.sock`, `claudedeck-commands.log`, `claudedeck-ledger.json`, `claudedeck-usage.json`, `claudedeck-models.json` (your overrides), `claudedeck-models-learned.json`, `claudedeck-repos.json` (launch picker folders), `claude-deck-cache.json`, `claudedeck-token-cache.json`, `claudedeck-session-numbers.json`, the `settings.json.bak-claudedeck-*` backup, and `claudedeck-debug.log` only with `CLAUDEDECK_DEBUG=1`.
 
 **Layout.**
 
@@ -121,7 +124,7 @@ docs              the design paper
 
 ## Status
 
-Built and in daily use; current release 1.0.6, 488 tests.
+Built and in daily use; current release 1.0.6, 537 tests.
 
 - Works today: everything listed under "What it does", the CLI, the status line, installers and the release workflow.
 - iTerm2 is the tested terminal. Terminal.app support exists in the scripts but is less tested.
