@@ -1,0 +1,5 @@
+# Dayfly farm declarations for this repository (docs/REPO_SOP.md in DigitalSalve/dayfly-internal).
+# The farm reads this file from the default branch. Leave `jobs` empty unless a job needs a
+# declared size, a network allowance or a priority band; the default for everything is medium
+# priority and a light box sized from measurement.
+jobs: {}
