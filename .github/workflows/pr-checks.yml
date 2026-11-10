@@ -1,0 +1,44 @@
+# Checks every pull request into main:
+#   version - a PR that changes what ships (app, CLI, scripts, skill, build files) must raise
+#             CFBundleShortVersionString in Info.plist above main's, and keep CFBundleVersion equal
+#             to it. Docs-only and workflow-only PRs need no bump. Add the label `no-version-bump`
+#             to skip this for a change that ships nothing users would notice.
+#   tests   - runs the test suite, the same one the release workflow runs.
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    name: Version bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require a version bump when shipped files change
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no-version-bump') }}
+        run: .github/scripts/check-version-bump.sh "$BASE_SHA" "$HEAD_SHA"
+
+  tests:
+    name: Tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: swift run ClaudeDeckTests
