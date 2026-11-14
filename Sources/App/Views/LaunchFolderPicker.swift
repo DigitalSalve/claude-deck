@@ -34,7 +34,7 @@ struct LaunchIntent {
 
 /// Asked on every launch: the folder to run Claude Code in. Type to filter,
 /// arrow keys to move, Return to launch, Escape to cancel. Home and any other
-/// folder are one click away in the footer.
+/// folder are one click away in the bar under the search field.
 struct LaunchFolderPicker: View {
     let intent: LaunchIntent
     @Binding var catalog: RepoCatalog
@@ -101,10 +101,9 @@ struct LaunchFolderPicker: View {
         VStack(spacing: 0) {
             header
             searchField
+            actionBar
             Divider()
             list
-            Divider()
-            footer
         }
         .frame(width: 480)
         .onAppear {
@@ -180,10 +179,10 @@ struct LaunchFolderPicker: View {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     if searching && matches.isEmpty {
                         emptyState("No folder matches “\(query.trimmingCharacters(in: .whitespaces))”",
-                                   hint: "Try fewer letters, or use Other Folder… below.")
+                                   hint: "Try fewer letters, or use Other Folder… above.")
                     } else if repos.isEmpty && !searching && pinnedOnly.isEmpty && recent.isEmpty {
                         emptyState("No git repositories under \(catalog.roots.joined(separator: ", "))",
-                                   hint: "Add a scan root from the footer, or pick any folder.")
+                                   hint: "Add a scan root from the ⋯ menu above, or pick any folder.")
                     }
                     ForEach(sections) { section in
                         if let title = section.title, !section.entries.isEmpty {
@@ -236,7 +235,7 @@ struct LaunchFolderPicker: View {
         }
     }
 
-    private var footer: some View {
+    private var actionBar: some View {
         HStack(spacing: 8) {
             FooterButton(icon: "house", label: "Home") { launch(home.path) }
                 .help("Run in your home folder, as before")
@@ -272,7 +271,8 @@ struct LaunchFolderPicker: View {
             .fixedSize()
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.top, -2)
+        .padding(.bottom, 10)
     }
 
     private func emptyState(_ title: String, hint: String) -> some View {
